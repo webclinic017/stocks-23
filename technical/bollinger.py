@@ -9,6 +9,14 @@ import glob
 from sqlalchemy import create_engine
 import schedule
 import logging
+import base64
+
+# email libs
+import smtplib, ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+
 logging.basicConfig(filename='bollinger.log', level = logging.INFO)
 class SQL():
     user = 'root'
@@ -120,27 +128,80 @@ def bollingerbands(ticker):
     if (latestClose > latestUpper or latestClose > (latestUpper+latestMA)/2):
         logging.info(f"{ticker} is in/near overbuy territory, filtered out")
         return None
-    stockprices[['close','MA20','Upper','Lower']].plot(figsize=(10,4))
+    stockprices[['close','MA20','Upper','Lower']].plot(figsize=(7.5,3))
     plt.grid(True)
     plt.title(ticker + ' Bollinger Bands')
     plt.axis('tight')
     plt.ylabel('Price')
     plt.savefig(f'{ticker}.png', bbox_inches='tight')
+    return 1
 
-def generateGraphs():
-    logging.info('Generate bollinger graphs')
-    if (datetime.now().weekday() >4):
-        return None
+def generateGraph(ticker):
+    """
+    generate bollinger graph & URL for ticker detail
+    output a html table row 
+    """
+    logging.info(f"generate graph {ticker}")
+    chart = bollingerbands(ticker)
+    if (chart is None):
+        return ""
+    encoded = base64.b64encode(open(f"{ticker}.png", 'rb').read()).decode()
+    html_str = f"""
+    <tr>
+    <td>
+    <a href="https://finance.vietstock.vn/{ticker}/TS5-co-phieu.htm">{ticker}</a>
+    </td>
+    <td>
+    <img src="data:image/png;base64,{encoded}">
+    </td>
+    </tr>
+    """
+    return html_str
+
+def sendEmailConfig(message_body, i):
+    sender = "hieund2102@gmail.com"
+    receiver = sender
+    password = "oracle_4U"
+    message = MIMEMultipart("alternative")
+    message["Subject"] = f"Bollinger Chart {datetime.now()} Part {i}"
+    message["From"] = sender
+    message["To"] = receiver
+    part = MIMEText(message_body, "html")
+    message.attach(part)
+
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context = context) as server:
+        server.login(sender, password)
+        server.sendmail(sender,receiver, message.as_string())
+
+def sendEmail():
+    # get tickers list filtered by volume
     ticker_list = filterStocks()
-    logging.info(f"initial filter (volume filter): {len(ticker_list)}")
-    for ticker in ticker_list:
-        bollingerbands(ticker)
-    logging.info(f"Generation done for {datetime.now()}")
+    #chunk ticker_list into smaller list for ease of mailing
+    n = 30
+    i = 1
+    ticker_lists = [ticker_list[i:i+n] for i in range(0, len(ticker_list), n)]
+    for sublist in ticker_lists:
+        html_body = """
+        <table>
+        <th>
+        <td>Ticker</td>
+        <td>Bollinger</td>
+        </th>
+        """
+        for ticker in sublist:
+            html_body = html_body + generateGraph(ticker)
+        html_body = html_body+"</table>"
+        sendEmailConfig(html_body, i)
+        i = i + 1
+    #delete generated images
+    deleteFile('png')
 
-generateGraphs()
 
 # schedule.every().day.at("20:00").do(insertData(0))
-# schedule.every().day.at("21:30").do(generateGraphs())
+# schedule.every().day.at("21:30").do(sendEmail())
 # while True:
     # schedule.run_pending()
     # time.sleep(1)
+
+sendEmail()

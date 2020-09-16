@@ -23,6 +23,7 @@ def sendEmail(message_body):
 	with smtplib.SMTP_SSL("smtp.gmail.com", 465, context = context) as server:
 		server.login(sender, password)
 		server.sendmail(sender,receiver, message.as_string())
+		
 def scrape_data():
 	url = 'https://www.cophieu68.vn/events.php'
 	context = ssl._create_unverified_context()
@@ -34,9 +35,7 @@ def scrape_data():
 	table = str(table.to_html())
 	table = table.replace("&lt;","<")
 	table = table.replace("&gt;",">")
-	print(table)
 	# &gt;VC7&lt; /a&gt;
-	# print(table.to_html(escapse=False))
 	sendEmail(table)
 
 schedule.every().day.at("08:30").do(scrape_data)
