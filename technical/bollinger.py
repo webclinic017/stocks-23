@@ -4,8 +4,9 @@ from datetime import datetime,timedelta
 import logging
 import base64
 from utils.file_utils import deleteFile
-
-
+from utils.stock_data_utils import filterStocks
+from utils.sql_utils import SQL
+from utils.email_utils import sendEmail
 def bollingerbands(ticker):
     logging.debug(f"Generate Bollinger Bands chart for {ticker}")
     database = SQL()
@@ -16,12 +17,11 @@ def bollingerbands(ticker):
     stockprices['20dSTD'] = stockprices['close'].rolling(window=20).std() 
     stockprices['Upper'] = stockprices['MA20'] + (stockprices['20dSTD'] * 2)
     stockprices['Lower'] = stockprices['MA20'] - (stockprices['20dSTD'] * 2)
-    
     latestPrice = stockprices.tail(1).iloc[0]
     latestClose = latestPrice['close']
     latestUpper = latestPrice['Upper']
     latestMA = latestPrice['MA20']
-    # print(stockprices)
+
     # filter out stock that are:
     # 1. close > upper => overbuy
     # 2. close > (MA20 +upper)/2 => near overbuy/stop profit point

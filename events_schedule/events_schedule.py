@@ -22,7 +22,7 @@ def scrape_data():
 	table = str(table.to_html())
 	table = table.replace("&lt;","<")
 	table = table.replace("&gt;",">")
-	# sendEmail(table, "Stock Calendar Event")
+	sendEmail(table, "Stock Calendar Event")
 
 def crawlData():
 	url = "https://www.cophieu68.vn/events.php"
@@ -45,6 +45,8 @@ def convertToPercentage(x):
 def getAdditionalStockCount(x):
 	count = x.split(" ")[-1].replace(",","")
 	return int(count)
+
+	
 # schedule.every().day.at("08:30").do(scrape_data)
 # while True:
 # 	schedule.run_pending()

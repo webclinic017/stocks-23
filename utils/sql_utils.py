@@ -39,7 +39,6 @@ class SQL():
     def insertCalendarEvent(self, dataframe):
         # process df
         logging.info("insert calendar events")
-        # print(dataframe)
         dataframe = dataframe.drop(dataframe.columns[[1, 3, 4, 5]], axis=1)
         df = pd.DataFrame(dataframe.values, columns=["ticker", "date", "percentage"])
         calendar_dict = df.to_dict(orient='records')
@@ -56,7 +55,6 @@ class SQL():
                     conn.execute(query,**item)
                 except Exception as e:
                     logging.error(str(e))
-                    # logging.error("Duplicate events")
 
     def adjustPrice(self):
         """
@@ -71,8 +69,10 @@ class SQL():
             and date < curdate()
             """
         events = pd.read_sql_query(query, con = self.engine)
-        events['date'] = events['date'].dt.strftime("%d/%m/%Y")
         logging.info(f"Events list length: {len(events)}")
+        if len(events) ==0:
+            return 
+        events['date'] = events['date'].dt.strftime("%d/%m/%Y")
         
         events_dict = events.to_dict(orient='records')
         sql = text(f"""
@@ -94,5 +94,6 @@ class SQL():
         
         with self.engine.connect() as conn:
             for event in events_dict:
+                logging.info(f"Adjust price for {event['ticker']}")
                 conn.execute(sql, **event)
                 conn.execute(update_event_sql, **event)
