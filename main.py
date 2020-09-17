@@ -1,10 +1,11 @@
-# from events_schedule.events_schedule import scrape_data as get_stock_calendar
+import events_schedule.events_schedule as stock_schedule
 from utils.sql_utils import SQL
 import logging
 log_format="[%(filename)s:%(lineno)s - %(funcName)s] %(message)s"
 logging.basicConfig(filename='stocks.log', level = logging.INFO, format = log_format)
 def main():
 	# print("test")
+	# stock_schedule.scrape_data()
 	# get_stock_calendar()
 	# try:
 	database = SQL()

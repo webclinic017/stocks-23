@@ -1,9 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime,timedelta
-import os 
-import glob
-import schedule
 import logging
 import base64
 from utils.file_utils import deleteFile
@@ -12,12 +9,14 @@ from utils.file_utils import deleteFile
 def bollingerbands(ticker):
     logging.debug(f"Generate Bollinger Bands chart for {ticker}")
     database = SQL()
-    stockprices = database.getStockData(ticker, 30).sort_values(by='date', ascending=True)
+    stockprices = database.getStockData(ticker, 200).sort_values(by='date', ascending=True)
     stockprices = stockprices.set_index('date')
     stockprices['MA20'] = stockprices['close'].rolling(window=20).mean()
+    stockprices['SMA200'] = stockprices['close'].rolling(window=200).mean()
     stockprices['20dSTD'] = stockprices['close'].rolling(window=20).std() 
     stockprices['Upper'] = stockprices['MA20'] + (stockprices['20dSTD'] * 2)
     stockprices['Lower'] = stockprices['MA20'] - (stockprices['20dSTD'] * 2)
+    
     latestPrice = stockprices.tail(1).iloc[0]
     latestClose = latestPrice['close']
     latestUpper = latestPrice['Upper']
@@ -29,7 +28,7 @@ def bollingerbands(ticker):
     if (latestClose > latestUpper or latestClose > (latestUpper+latestMA)/2):
         logging.info(f"{ticker} is in/near overbuy territory, filtered out")
         return None
-    stockprices[['close','MA20','Upper','Lower']].plot(figsize=(7.5,3))
+    stockprices[['close','MA20','Upper','Lower','SMA200']].plot(figsize=(7.5,3))
     plt.grid(True)
     plt.title(ticker + ' Bollinger Bands')
     plt.axis('tight')
@@ -49,12 +48,12 @@ def generateGraph(ticker):
     encoded = base64.b64encode(open(f"{ticker}.png", 'rb').read()).decode()
     html_str = f"""
     <tr>
-    <td>
-    <a href="https://finance.vietstock.vn/{ticker}/TS5-co-phieu.htm">{ticker}</a>
-    </td>
-    <td>
-    <img src="data:image/png;base64,{encoded}">
-    </td>
+        <td>
+            <a href="https://finance.vietstock.vn/{ticker}/TS5-co-phieu.htm">{ticker}</a>
+        </td>
+        <td>
+            <img src="data:image/png;base64,{encoded}">
+        </td>
     </tr>
     """
     return html_str
@@ -69,10 +68,10 @@ def buildEmailContent():
     for sublist in ticker_lists:
         html_body = """
         <table>
-        <th>
-        <td>Ticker</td>
-        <td>Bollinger</td>
-        </th>
+            <th>
+            <td>Ticker</td>
+            <td>Bollinger</td>
+            </th>
         """
         for ticker in sublist:
             html_body = html_body + generateGraph(ticker)
@@ -82,7 +81,6 @@ def buildEmailContent():
     #delete generated images
     deleteFile('png', '.')
 
-
 # schedule.every().day.at("20:00").do(insertData(0))
 # schedule.every().day.at("21:30").do(sendEmail())
 # while True:
@@ -91,4 +89,4 @@ def buildEmailContent():
 
 # sendEmail()
 # insertData(0)
-bollingerbands('SJE')
+# bollingerbands('SJE')

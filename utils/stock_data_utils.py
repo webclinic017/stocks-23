@@ -2,7 +2,8 @@ from datetime import datetime, timedelta
 import zipfile
 import requests
 import urllib.request
-from utils.sql_utils import SQL     
+from utils.sql_utils import SQL    
+import logging 
 def insertData(time_offset):
     logging.info(f"Insert stock into database with time offset={time_offset}")
     if (time_offset is not None):

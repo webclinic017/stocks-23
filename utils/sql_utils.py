@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine,text
 import pandas as pd
 import logging
+
 class SQL():
     user = 'root'
     pw = 'oracle_4U'
@@ -38,7 +39,8 @@ class SQL():
     def insertCalendarEvent(self, dataframe):
         # process df
         logging.info("insert calendar events")
-        dataframe = dataframe.drop(dataframe.columns[[1, 2, 5]], axis=1)
+        # print(dataframe)
+        dataframe = dataframe.drop(dataframe.columns[[1, 3, 4, 5]], axis=1)
         df = pd.DataFrame(dataframe.values, columns=["ticker", "date", "percentage"])
         calendar_dict = df.to_dict(orient='records')
         # insert to db
@@ -56,20 +58,22 @@ class SQL():
                     logging.error(str(e))
                     # logging.error("Duplicate events")
 
-
     def adjustPrice(self):
         """
         adjust stock price after issuing additional stock
         """
         # get list of 
         logging.info("adjust stock price")
-        events = pd.read_sql_query(f"""
+        query =f"""
             select ticker, date, percentage 
             from {self.calendar_table}
             where processed = 0
-            and timediff(curdate(),date) >=0
-            """, con = self.engine)
+            and date < curdate()
+            """
+        events = pd.read_sql_query(query, con = self.engine)
+        events['date'] = events['date'].dt.strftime("%d/%m/%Y")
         logging.info(f"Events list length: {len(events)}")
+        
         events_dict = events.to_dict(orient='records')
         sql = text(f"""
         update {self.table}
@@ -78,14 +82,16 @@ class SQL():
         high = high * :percentage,
         low = low * :percentage
         where ticker = :ticker
-        and date < :date
+        and date < str_to_date(:date, "%d/%m/%Y")
         """)
+        
         update_event_sql = text(f"""
             update {self.calendar_table}
             set processed = 1
             where ticker = :ticker
-            and date = :date
+            and date = str_to_date(:date, "%d/%m/%Y")
             """)
+        
         with self.engine.connect() as conn:
             for event in events_dict:
                 conn.execute(sql, **event)
