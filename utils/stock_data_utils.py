@@ -4,8 +4,11 @@ import requests
 import urllib.request
 from utils.sql_utils import SQL    
 import logging 
-def insertData(time_offset):
-    logging.info(f"Insert stock into database with time offset={time_offset}")
+import glob
+import pandas as pd
+from utils.file_utils import deleteFile
+
+def getData(time_offset):
     if (time_offset is not None):
         date = datetime.now() - timedelta(time_offset)
     else:
@@ -24,12 +27,24 @@ def insertData(time_offset):
         urllib.request.urlretrieve(url,"data.zip")
     except:
         logging.error("Download failed")
-        return 
+        return 0
+    return 1
+
+
+def insertData(time_offset):
+    logging.info(f"Insert stock into database with time offset={time_offset}")
+    if getData(time_offset) == 0:
+        return None
+
     logging.info("Unzip downloaded file")
+
     with zipfile.ZipFile('./data.zip', 'r') as zip_ref:
         zip_ref.extractall('.')
+    
     files = glob.glob('./**.csv')
+    
     database = SQL()
+    
     for file in files:
         df = pd.read_csv(file, header=0, parse_dates=['<DTYYYYMMDD>'])
         df = df.rename(columns={
@@ -45,14 +60,13 @@ def insertData(time_offset):
             database.insert(df)
         except:
             logging.error("Error insert to db")
-    deleteFile(".csv")
+    deleteFile(".csv", '.')
+    deleteFile(".zip", '.')
+
 
 def filterStocks():
     logging.info("Filter stocks")
     database = SQL()
     stock_filter = database.getLatestData()['ticker'].tolist()
     return stock_filter
-
-# def adjustStockPrice(ticker, from_date, percent):
-    # calendar_table = 'stock_adjust_calendar'
 
