@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import mplfinance as mpf
 from datetime import datetime,timedelta
 import logging
 import base64
@@ -7,33 +8,36 @@ from utils.file_utils import deleteFile
 from utils.stock_data_utils import filterStocks
 from utils.sql_utils import SQL
 from utils.email_utils import sendEmail
+
 def bollingerbands(ticker):
     logging.debug(f"Generate Bollinger Bands chart for {ticker}")
     database = SQL()
     stockprices = database.getStockData(ticker, 200).sort_values(by='date', ascending=True)
     stockprices = stockprices.set_index('date')
     stockprices['MA20'] = stockprices['close'].rolling(window=20).mean()
-    stockprices['SMA200'] = stockprices['close'].rolling(window=200).mean()
     stockprices['20dSTD'] = stockprices['close'].rolling(window=20).std() 
     stockprices['Upper'] = stockprices['MA20'] + (stockprices['20dSTD'] * 2)
     stockprices['Lower'] = stockprices['MA20'] - (stockprices['20dSTD'] * 2)
-    latestPrice = stockprices.tail(1).iloc[0]
-    latestClose = latestPrice['close']
-    latestUpper = latestPrice['Upper']
-    latestMA = latestPrice['MA20']
+    bollingers = stockprices[['MA20', 'Upper', 'Lower']]
+    # latestPrice = stockprices.tail(1).iloc[0]
+    # latestClose = latestPrice['close']
+    # latestUpper = latestPrice['Upper']
+    # latestMA = latestPrice['MA20']
 
     # filter out stock that are:
     # 1. close > upper => overbuy
     # 2. close > (MA20 +upper)/2 => near overbuy/stop profit point
-    if (latestClose > latestUpper or latestClose > (latestUpper+latestMA)/2):
-        logging.info(f"{ticker} is in/near overbuy territory, filtered out")
-        return None
-    stockprices[['close','MA20','Upper','Lower','SMA200']].plot(figsize=(7.5,3))
-    plt.grid(True)
-    plt.title(ticker + ' Bollinger Bands')
-    plt.axis('tight')
-    plt.ylabel('Price')
-    plt.savefig(f'{ticker}.png', bbox_inches='tight')
+    # if (latestClose > latestUpper or latestClose > (latestUpper+latestMA)/2):
+    #     logging.info(f"{ticker} is in/near overbuy territory, filtered out")
+    #     return None
+    apd = mpf.make_addplot(bollingers, alpha = 0.3)
+    mpf.plot(stockprices, type='candle',
+            title=f"{ticker}",
+            ylabel='Bollinger',
+            ylabel_lower='Volume',
+            volume=True,
+            addplot=apd,
+            savefig=f'{ticker}.png')
     return 1
 
 def generateGraph(ticker):
@@ -80,13 +84,3 @@ def buildEmailContent():
         i = i + 1
     #delete generated images
     deleteFile('png', '.')
-
-# schedule.every().day.at("20:00").do(insertData(0))
-# schedule.every().day.at("21:30").do(sendEmail())
-# while True:
-    # schedule.run_pending()
-    # time.sleep(1)
-
-# sendEmail()
-# insertData(0)
-# bollingerbands('SJE')

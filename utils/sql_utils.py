@@ -20,7 +20,7 @@ class SQL():
     def getStockData(self, ticker, timelimit):
         logging.debug(f"Get stock data for {ticker}")
         return pd.read_sql_query(f"""
-            select ticker, date, close 
+            select ticker, date, open, high, low, close, volume
             from {self.table} 
             where ticker = '{ticker}' 
             order by date desc 
