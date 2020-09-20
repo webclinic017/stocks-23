@@ -68,7 +68,7 @@ def insertData(time_offset):
 def filterStocks():
     logging.info("Filter stocks")
     database = SQL()
-    stock_filter = database.getLatestData()['ticker'].tolist()
+    stock_filter = database.getLatestData()
     return stock_filter
 
 

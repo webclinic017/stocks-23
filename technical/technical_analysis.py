@@ -35,7 +35,6 @@ def bollingerbands(stockprices):
     return bollingers
 
 def generate_plot_fig(ticker):
-    logging.debug(f"Generate Charts for {ticker}")
     database = SQL()
     stockprices = database.getStockData(ticker, 200).sort_values(by='date', ascending=True).set_index('date')
     bollingers_data = bollingerbands(stockprices)
@@ -48,7 +47,7 @@ def generate_plot_fig(ticker):
     and latest_r['close'] >= 70 :
         logging.info(f"{ticker} is overbought")
         return None
-
+    logging.debug(f"Generate Charts for {ticker}")
     fig = mpf.figure(style='yahoo',figsize=(10,6))
     ax1 = fig.add_subplot(3,1,1)
     ax2 = fig.add_subplot(3,1,2)
@@ -93,23 +92,26 @@ def generateGraph(ticker):
 
 def buildEmailContent():
     # get tickers list filtered by volume
-    ticker_list = filterStocks()
-    #chunk ticker_list into smaller list for ease of mailing
-    n = 30
-    i = 1
-    ticker_lists = [ticker_list[i:i+n] for i in range(0, len(ticker_list), n)]
-    for sublist in ticker_lists:
-        html_body = """
-        <table>
-            <th>
-            <td>Ticker</td>
-            <td>Graphs</td>
-            </th>
-        """
-        for ticker in sublist:
-            html_body = html_body + generateGraph(ticker)
-        html_body = html_body+"</table>"
-        sendEmail(html_body, f"[{datetime.date.today()}] Part {i} Market Technical Analysis")
-        i = i + 1
-    #delete generated images
-    deleteFile('png', '.')
+    sector_list = filterStocks()
+    for sector in sector_list:
+        ticker_list = sector_list[sector]['ticker'].tolist()
+
+        #chunk ticker_list into smaller list for ease of mailing
+        n = 30
+        i = 1
+        ticker_lists = [ticker_list[i:i+n] for i in range(0, len(ticker_list), n)]
+        for sublist in ticker_lists:
+            html_body = """
+            <table>
+                <th>
+                <td>Ticker</td>
+                <td>Graphs</td>
+                </th>
+            """
+            for ticker in sublist:
+                html_body = html_body + generateGraph(ticker)
+            html_body = html_body+"</table>"
+            sendEmail(html_body, f"[{datetime.now().strftime('%Y-%m-%d')}][{sector}] Part {i} Market Technical Analysis")
+            i = i + 1
+        #delete generated images
+        deleteFile('png', '.')

@@ -28,13 +28,25 @@ class SQL():
     
     def getLatestData(self):
         logging.debug("Get latest stock data")
-        return pd.read_sql_query(f"""
+        sector_list = pd.read_sql_query(f"""
+            select distinct sector 
+            from ticker_data
+            """, con = self.engine)['sector'].tolist()
+
+        dfs ={}
+        for sector in sector_list:
+            df = pd.read_sql_query(f"""
             select ticker 
-            from {self.table} 
-            where date = (select distinct date from data order by date desc limit 1)
+            from {self.table}
+            where ticker in 
+            (select ticker from ticker_data
+            where sector = '{sector}') 
+            and date = (select distinct date from data order by date desc limit 1)
             and volume >100000
             and length(ticker) =3
             """, con = self.engine)
+            dfs[sector]=df
+        return dfs
 
     def insertCalendarEvent(self, dataframe):
         # process df

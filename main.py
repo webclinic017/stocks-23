@@ -3,7 +3,7 @@ from utils.sql_utils import SQL
 import logging
 from technical.technical_analysis import buildEmailContent as sendTechnicalAnalysis
 from technical.technical_analysis import generate_plot_fig
-from utils.stock_data_utils import insertData
+from utils.stock_data_utils import insertData, filterStocks
 from utils.crawler_utils import get_child_urls,get_url_data
 import schedule
 import pandas as pd
@@ -31,8 +31,11 @@ def getTickerData():
 			print(df)
 
 def main():
+	# dfs = filterStocks()
+	# for df in dfs:
+		# print(dfs[df])
 	# scheduling()
-	# sendTechnicalAnalysis()
+	sendTechnicalAnalysis()
 	# generate_plot_fig('AGR')
 	# insertData(1)
 	# stock_schedule.scrape_data()
