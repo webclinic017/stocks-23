@@ -8,6 +8,7 @@ import glob
 import pandas as pd
 from utils.file_utils import deleteFile
 
+
 def getData(time_offset):
     if (time_offset is not None):
         date = datetime.now() - timedelta(time_offset)
@@ -69,4 +70,5 @@ def filterStocks():
     database = SQL()
     stock_filter = database.getLatestData()['ticker'].tolist()
     return stock_filter
+
 

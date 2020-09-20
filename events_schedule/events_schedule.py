@@ -3,6 +3,7 @@ import ssl
 import pandas as pd
 from urllib import request
 from utils.sql_utils import SQL		
+from utils.email_utils import sendEmail
 pd.options.mode.chained_assignment = None  # default='warn'
 
 def scrape_data():

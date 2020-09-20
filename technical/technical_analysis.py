@@ -103,7 +103,7 @@ def buildEmailContent():
         <table>
             <th>
             <td>Ticker</td>
-            <td>Bollinger</td>
+            <td>Graphs</td>
             </th>
         """
         for ticker in sublist:
