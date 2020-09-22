@@ -37,7 +37,7 @@ def main():
 	# scheduling()
 	sendTechnicalAnalysis()
 	# generate_plot_fig('AGR')
-	# insertData(1)
+	# insertData(0)
 	# stock_schedule.scrape_data()
 	
 

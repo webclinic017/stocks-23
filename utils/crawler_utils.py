@@ -29,7 +29,6 @@ def get_url_data(url):
     req = urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
     webpage = urllib.request.urlopen(req).read()
     df = pd.read_html(webpage)[0]
-    # pd.set_option('display.max_rows', df.shape[0]+1)
     # pd.set_option('display.width', 1000)
     # print(df)
     return df

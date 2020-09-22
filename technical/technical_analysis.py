@@ -10,8 +10,8 @@ from utils.sql_utils import SQL
 from utils.email_utils import sendEmail
 
 def rsi(stockprices):
-    df = stockprices
-    delta = df['close'].diff()
+    # df = stockprices
+    delta = stockprices['close'].diff()
     up, down = delta.copy(), delta.copy()
     up[up < 0] = 0
     down[down > 0] = 0
@@ -21,9 +21,9 @@ def rsi(stockprices):
     # Calculate the RSI based on SMA
     RS = roll_up / roll_down
     RSI = 100.0 - (100.0 / (1.0 + RS))
-    df2 = pd.DataFrame(RSI)
-    df2[['upper', 'lower', 'middle']] = [70, 30, 50]
-    return df2
+    df = pd.DataFrame(RSI)
+    df[['upper', 'lower', 'middle']] = [70, 30, 50]
+    return df
 
 
 def bollingerbands(stockprices):
@@ -43,10 +43,10 @@ def generate_plot_fig(ticker):
     # filter overbuy
     latest_b = stockprices.tail(1).iloc[0]
     latest_r = rsi_data.tail(1).iloc[0]
-    if (latest_b['close'] > latest_b['Upper'] or latest_b['close'] > (latest_b['Upper'] +latest_b['MA20'])/2) \
-    and latest_r['close'] >= 70 :
-        logging.info(f"{ticker} is overbought")
-        return None
+    # if (latest_b['close'] > latest_b['Upper'] or latest_b['close'] > (latest_b['Upper'] +latest_b['MA20'])/2) \
+    # and latest_r['close'] >= 70 :
+        # logging.info(f"{ticker} is overbought")
+        # return None
     logging.debug(f"Generate Charts for {ticker}")
     fig = mpf.figure(style='yahoo',figsize=(10,6))
     ax1 = fig.add_subplot(3,1,1)
@@ -62,9 +62,12 @@ def generate_plot_fig(ticker):
         ax = ax1, 
             volume=ax3,
             addplot=apd,
-            xrotation=10,
+            xrotation=0,
+            # figscale=1.1,figratio=(8,5),
+            # title=f"\n{ticker}",
             savefig=f"{ticker}.png"
             )
+    fig.xlabel=f"{ticker}"
     fig.savefig(f'{ticker}.png')
     return 1
 
@@ -104,8 +107,8 @@ def buildEmailContent():
             html_body = """
             <table>
                 <th>
-                <td>Ticker</td>
-                <td>Graphs</td>
+                    <td>Ticker</td>
+                    <td>Graphs</td>
                 </th>
             """
             for ticker in sublist:
