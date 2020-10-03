@@ -8,7 +8,6 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-
 def is_stock_trending(ticker):
 	database = SQL()
 	# get stock data ADX
@@ -30,19 +29,7 @@ def is_stock_trending(ticker):
 	# print(ticker, under_20_count<5)
 	return True if under_20_count < 5 else False
 
-def bollinger(ticker):
-	database = SQL()
-	# get stock data ADX
-	df = database.getStockData(ticker, 50).sort_values(by='date', ascending=True).set_index('date')
-	boll = BollingerBands(df['close'])
-	df['ma'] = boll.bollinger_mavg()
-	df['hband'] = boll.bollinger_hband()
-	df['lband'] = boll.bollinger_lband()
-	high = boll.bollinger_hband_indicator()[-1] ==1
-	low = boll.bollinger_lband_indicator()[-1] ==1
-	if (high or low):
-		print(df)
-	return boll
+
 	
 def filter_trend():
 	sector_list = filterStocks()

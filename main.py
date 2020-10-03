@@ -11,6 +11,7 @@ import schedule
 import pandas as pd
 import sys
 from technical import trend_filter
+from technical import non_trend,trend
 log_format="[%(filename)s:%(lineno)s - %(funcName)s] %(message)s"
 
 file_handler = logging.FileHandler(filename='stocks.log')
@@ -52,7 +53,9 @@ def main():
 	# database.adjustPrice()
 	# sendTechnicalAnalysis()
 	# print(trend_filter.is_stock_trending('STK'))
-	trend_filter.filter_trend()
+	# trend_filter.filter_trend()
+	# non_trend.generate_plot_fig('VHM')
+	trend.generate_plot_fig('ACB')
 	# trend_filter.bollinger('HDB')
 if __name__ == '__main__':
 	main()
