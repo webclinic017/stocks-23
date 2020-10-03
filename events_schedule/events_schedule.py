@@ -1,29 +1,31 @@
 # email libs
 import ssl
 import pandas as pd
+import numpy as np
 from urllib import request
 from utils.sql_utils import SQL		
 from utils.email_utils import sendEmail
+import logging
 pd.options.mode.chained_assignment = None  # default='warn'
 
 def scrape_data():
-	table = crawlData()
-	additional_stocks=table[1]=='Cổ phiếu thưởng'
-	additional_stocks = table[additional_stocks]
-	additional_stocks[5]= additional_stocks[5].apply(getAdditionalStockCount)
-	additional_stocks[4]= additional_stocks[4].apply(convertToPercentage)
-	for index, row in additional_stocks.iterrows():
-		if row[5] >0:
-			additional_stocks.at[index, 'percentage'] = (row[5]/row[4])/(row[5] + row[5]/row[4])
-		else:
-			additional_stocks.at[index, 'percentage'] = 1 - row[4]
+	logging.info('Crawl Stock Calendar Events')
+	df = crawlData()
+	header_filter= df[1]!= 'Loại Sự Kiện'
+	df = df[header_filter]
+	event_filter = df[1] != 'Phát hành khác'
+	df = df[event_filter]
+	logging.info('Adjusting stock prices')
+
+	df = calculate_stock_adjustment(df)
+
 	database = SQL()
-	database.insertCalendarEvent(additional_stocks)
-	table[0]= '<a href="https://finance.vietstock.vn/'+table[0]+'/TS5-co-phieu.htm">'+table[0]+'</a>'
-	table = str(table.to_html())
-	table = table.replace("&lt;","<")
-	table = table.replace("&gt;",">")
-	sendEmail(table, "Stock Calendar Event")
+	database.insertCalendarEvent(df)
+	# df[0]= '<a href="https://finance.vietstock.vn/'+df[0]+'/TS5-co-phieu.htm">'+df[0]+'</a>'
+	# df = str(df.to_html())
+	# df = df.replace("&lt;","<")
+	# df = df.replace("&gt;",">")
+	# # sendEmail(table, "Stock Calendar Event")
 
 def crawlData():
 	url = "https://www.cophieu68.vn/events.php"
@@ -39,16 +41,37 @@ def crawlData():
 		df = pd.concat([df, pd.read_html(html)[1]])
 	return df
 
-def convertToPercentage(x):
-	numbers=str(x).split("/")
-	return int(numbers[1])/int(numbers[0])
+def calculate_stock_adjustment(df):
+	"""
+	calculate stock adjusted price using the following formulae:
+	adjusted_close = close / F
+	1. cash dividend
+		F = (Close + dividend_per_share)/Close
+	2. stock dividend
+		F = 1 + share_issue_rate
+	"""
 
-def getAdditionalStockCount(x):
-	count = x.split(" ")[-1].replace(",","")
-	return int(count)
-
+	# get cash dividend events
+	cash_div = df[1]=='Cổ tức bằng tiền'
+	cdf=df[cash_div]
+	cdf[4]=cdf[4].apply(lambda x: 10000 *float(x.replace('%',''))/100)
+	cdf[1]='Cash Dividend'
 	
-# schedule.every().day.at("08:30").do(scrape_data)
-# while True:
-# 	schedule.run_pending()
-# 	time.sleep(1)
+	# get stock dividend events
+	# ratio display as x/y
+	# F = 1 + y/x
+	stock_div = df[1]=='Cổ phiếu thưởng'
+	sdf =df[stock_div]
+	sdf[4]=sdf[4].apply(lambda x: 1 + (int(x.split('/')[1])/int(x.split('/')[0])))
+	sdf[1]='Stock Dividend'
+
+	# finalizing data
+	df = cdf.append(sdf)
+	df = df.drop(df.columns[[5]], axis=1)
+	df.columns = ['ticker', 'event', 'date','execution_date', 'detail']
+	df['date'] = pd.to_datetime(df['date'])
+	df['processed'] =0
+	df['execution_date'] = df['execution_date'].replace(np.nan, '', regex=True)
+	with pd.option_context('display.max_rows', None, 'display.max_columns', None):  
+		print(df)
+	return df

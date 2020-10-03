@@ -10,18 +10,20 @@ from utils.file_utils import deleteFile
 
 
 def getData(time_offset):
+    logging.info(f"Get stock data with time offset: {time_offset}")
     if (time_offset is not None):
         date = datetime.now() - timedelta(time_offset)
     else:
         date = datetime.now()
     # run if it's not weekend
+    logging.info(f"Stock data date: {date}; {date.weekday()}")
     if (date.weekday() >4):
-        return 
+        return 0
     # build URL
     date_yyyymmdd = date.strftime('%Y%m%d')
     date_ddmmyyyy = date.strftime('%d%m%Y')
     url = f"http://images1.cafef.vn/data/{date_yyyymmdd}/CafeF.SolieuGD.Raw.{date_ddmmyyyy}.zip"
-    logging.debug(f"Data URL: {url}")
+    logging.info(f"Data URL: {url}")
     # download file
     try:
         logging.info("Download file")

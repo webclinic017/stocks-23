@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine,text
+from sqlalchemy import create_engine,text,types,DateTime
 import pandas as pd
 import logging
 
@@ -8,7 +8,7 @@ class SQL():
     host = 'localhost'
     db = 'stocks'
     table = 'data'
-    calendar_table = 'stock_adjust_calendar'
+    calendar_table = 'stock_events'
     engine = None
     
     def __init__(self):
@@ -51,22 +51,26 @@ class SQL():
     def insertCalendarEvent(self, dataframe):
         # process df
         logging.info("insert calendar events")
-        dataframe = dataframe.drop(dataframe.columns[[1, 3, 4, 5]], axis=1)
-        df = pd.DataFrame(dataframe.values, columns=["ticker", "date", "percentage"])
-        calendar_dict = df.to_dict(orient='records')
-        # insert to db
-
-        with self.engine.connect() as conn:
-            query = text(f"""insert into {self.calendar_table}
-            (ticker, date,percentage, processed) 
-            values 
-            (:ticker,str_to_date(:date,"%d/%m/%Y"),:percentage,0)
-            """)
-            for item in calendar_dict:
-                try:
-                    conn.execute(query,**item)
-                except Exception as e:
-                    logging.error(str(e))
+        df = pd.read_sql_query(f"""
+            select * from {self.calendar_table}
+            """, con = self.engine)
+        dataframe = (
+            dataframe.merge(
+                df,
+                on = ['ticker', 'event', 'date', 'execution_date'],
+                how = 'left',
+                indicator=True
+            ).query('_merge == "left_only"').drop(columns='_merge')
+        )
+        dataframe.to_sql(self.calendar_table, con = self.engine, if_exists = 'append',index=False,
+            dtype={
+            'ticker':types.VARCHAR(length=15),
+            'event':types.VARCHAR(length=50),
+            'date':DateTime(),
+            'execution_date':types.VARCHAR(length=50),
+            'detail':types.Float(precision=3,asdecimal=True),
+            'processed':types.INTEGER()
+            })
 
     def adjustPrice(self):
         """

@@ -39,14 +39,17 @@ def getTickerData():
 			print(df)
 
 def main():
+	database = SQL()
 	# dfs = filterStocks()
 	# for df in dfs:
 		# print(dfs[df])
 	# scheduling()
 	# generate_plot_fig('AGR')
-	# insertData(2)
-	# stock_schedule.scrape_data()
-	sendTechnicalAnalysis()
+	# for i in range(6,365):
+		# insertData(i)
+	stock_schedule.scrape_data()
+	# database.adjustPrice()
+	# sendTechnicalAnalysis()
 
 if __name__ == '__main__':
 	main()
