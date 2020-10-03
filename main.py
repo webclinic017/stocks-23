@@ -45,10 +45,10 @@ def main():
 		# print(dfs[df])
 	# scheduling()
 	# generate_plot_fig('AGR')
-	# for i in range(6,365):
+	# for i in range(0,365):
 		# insertData(i)
-	stock_schedule.scrape_data()
-	# database.adjustPrice()
+	# stock_schedule.scrape_data()
+	database.adjustPrice()
 	# sendTechnicalAnalysis()
 
 if __name__ == '__main__':

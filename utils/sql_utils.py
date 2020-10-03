@@ -15,7 +15,8 @@ class SQL():
         self.engine = create_engine("mysql+pymysql://{user}:{pw}@{host}/{db}".format(user=self.user,pw=self.pw,host=self.host,db=self.db))
     
     def insert(self, dataframe):
-        dataframe.to_sql(self.table, con = self.engine, if_exists = 'append', chunksize=100)
+        dataframe.to_sql(self.table, con = self.engine, if_exists = 'append', chunksize=100,
+            )
     
     def getStockData(self, ticker, timelimit):
         logging.debug(f"Get stock data for {ticker}")
@@ -62,6 +63,10 @@ class SQL():
                 indicator=True
             ).query('_merge == "left_only"').drop(columns='_merge')
         )
+        dataframe['detail']=dataframe['detail_x']
+        dataframe['processed']=dataframe['processed_x']
+        dataframe=dataframe.drop(['processed_x', 'processed_y', 'detail_x', 'detail_y'], axis=1)
+        print(dataframe)
         dataframe.to_sql(self.calendar_table, con = self.engine, if_exists = 'append',index=False,
             dtype={
             'ticker':types.VARCHAR(length=15),
@@ -74,42 +79,67 @@ class SQL():
 
     def adjustPrice(self):
         """
-        adjust stock price after issuing additional stock
+        adjust stock price after dividends
         """
         # get list of 
         logging.info("adjust stock price")
         query =f"""
-            select ticker, date, percentage 
+            select ticker,event, date, detail 
             from {self.calendar_table}
             where processed = 0
             and date < curdate()
             """
         events = pd.read_sql_query(query, con = self.engine)
+
         logging.info(f"Events list length: {len(events)}")
+        
         if len(events) ==0:
             return 
+
         events['date'] = events['date'].dt.strftime("%d/%m/%Y")
         
         events_dict = events.to_dict(orient='records')
-        sql = text(f"""
-        update {self.table}
-        set close = close * :percentage,
-        open = open * :percentage,
-        high = high * :percentage,
-        low = low * :percentage
-        where ticker = :ticker
-        and date < str_to_date(:date, "%d/%m/%Y")
-        """)
+        # sql = text(f"""
+        # update {self.table}
+        # set close = close * :percentage,
+        # open = open * :percentage,
+        # high = high * :percentage,
+        # low = low * :percentage
+        # where ticker = :ticker
+        # and date < str_to_date(:date, "%d/%m/%Y")
+        # """)
         
+        sql_cash = text(f"""
+            update {self.table}
+            set close = (close*close) / (close + :detail),
+            open = (open * open) / (open+ :detail),
+            high = (high * high) / (high + :detail),
+            low = (low * low) / (low + :detail)
+            where ticker = :ticker
+            and date < str_to_date(:date, "%d/%m/%Y")
+            """)
+        sql_stock = text(f"""
+            update {self.table}
+            set close = close / :detail,
+            open = open / :detail,
+            high = high / :detail,
+            low = low / :detail
+            where ticker = :ticker
+            and date < str_to_date(:date, "%d/%m/%Y")
+            """)
         update_event_sql = text(f"""
             update {self.calendar_table}
             set processed = 1
             where ticker = :ticker
             and date = str_to_date(:date, "%d/%m/%Y")
+            and event = :event
             """)
         
         with self.engine.connect() as conn:
             for event in events_dict:
-                logging.info(f"Adjust price for {event['ticker']}")
-                conn.execute(sql, **event)
+                logging.info(f"Adjust price for {event['ticker']} event type: {event['event']}")
+                if (event['event'] == 'Cash Dividend'):
+                    conn.execute(sql_cash, **event)
+                else:
+                    conn.execute(sql_stock, **event)
                 conn.execute(update_event_sql, **event)

@@ -16,9 +16,7 @@ def scrape_data():
 	event_filter = df[1] != 'Phát hành khác'
 	df = df[event_filter]
 	logging.info('Adjusting stock prices')
-
 	df = calculate_stock_adjustment(df)
-
 	database = SQL()
 	database.insertCalendarEvent(df)
 	# df[0]= '<a href="https://finance.vietstock.vn/'+df[0]+'/TS5-co-phieu.htm">'+df[0]+'</a>'
@@ -54,7 +52,7 @@ def calculate_stock_adjustment(df):
 	# get cash dividend events
 	cash_div = df[1]=='Cổ tức bằng tiền'
 	cdf=df[cash_div]
-	cdf[4]=cdf[4].apply(lambda x: 10000 *float(x.replace('%',''))/100)
+	cdf[4]=cdf[4].apply(lambda x: 10 *float(x.replace('%',''))/100)
 	cdf[1]='Cash Dividend'
 	
 	# get stock dividend events
@@ -72,6 +70,4 @@ def calculate_stock_adjustment(df):
 	df['date'] = pd.to_datetime(df['date'])
 	df['processed'] =0
 	df['execution_date'] = df['execution_date'].replace(np.nan, '', regex=True)
-	with pd.option_context('display.max_rows', None, 'display.max_columns', None):  
-		print(df)
 	return df
