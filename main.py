@@ -10,6 +10,7 @@ from utils.crawler_utils import get_child_urls,get_url_data,get_html_data
 import schedule
 import pandas as pd
 import sys
+from technical import trend_filter
 log_format="[%(filename)s:%(lineno)s - %(funcName)s] %(message)s"
 
 file_handler = logging.FileHandler(filename='stocks.log')
@@ -45,11 +46,13 @@ def main():
 		# print(dfs[df])
 	# scheduling()
 	# generate_plot_fig('AGR')
-	# for i in range(0,365):
+	# for i in range(0,365):/
 		# insertData(i)
 	# stock_schedule.scrape_data()
-	database.adjustPrice()
+	# database.adjustPrice()
 	# sendTechnicalAnalysis()
-
+	# print(trend_filter.is_stock_trending('STK'))
+	trend_filter.filter_trend()
+	# trend_filter.bollinger('HDB')
 if __name__ == '__main__':
 	main()

@@ -67,7 +67,7 @@ def calculate_stock_adjustment(df):
 	df = cdf.append(sdf)
 	df = df.drop(df.columns[[5]], axis=1)
 	df.columns = ['ticker', 'event', 'date','execution_date', 'detail']
-	df['date'] = pd.to_datetime(df['date'])
+	df['date'] = pd.to_datetime(df['date'],dayfirst=True)
 	df['processed'] =0
 	df['execution_date'] = df['execution_date'].replace(np.nan, '', regex=True)
 	return df
