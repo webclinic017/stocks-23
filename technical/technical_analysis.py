@@ -8,7 +8,7 @@ from utils.file_utils import deleteFile
 from utils.stock_data_utils import filterStocks
 from utils.sql_utils import SQL
 from utils.email_utils import sendEmail
-
+from utils.crawler_utils import get_html_data
 def rsi(stockprices):
     # df = stockprices
     delta = stockprices['close'].diff()
@@ -81,6 +81,7 @@ def generateGraph(ticker):
     if (chart is None):
         return ""
     encoded = base64.b64encode(open(f"{ticker}.png", 'rb').read()).decode()
+    company_data= get_html_data(f"https://finance.vietstock.vn/{ticker}/tai-chinh.htm").replace('\n','<br>')
     html_str = f"""
     <tr>
         <td>
@@ -88,6 +89,9 @@ def generateGraph(ticker):
         </td>
         <td>
             <img src="data:image/png;base64,{encoded}">
+        </td>
+        <td>
+        <p>{company_data}</p>
         </td>
     </tr>
     """
@@ -106,14 +110,14 @@ def buildEmailContent():
         for sublist in ticker_lists:
             html_body = """
             <table>
-                <th>
-                    <td>Ticker</td>
-                    <td>Graphs</td>
-                </th>
+                <tr>
+                    <th>Ticker</th>
+                    <th>Graphs</th>
+                    <th>Company Data</th>
+                </tr>
             """
             for ticker in sublist:
                 html_body = html_body + generateGraph(ticker)
-            html_body = html_body+"</table>"
             sendEmail(html_body, f"[{datetime.now().strftime('%Y-%m-%d')}][{sector}] Part {i} Market Technical Analysis")
             i = i + 1
         #delete generated images

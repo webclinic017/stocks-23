@@ -1,14 +1,22 @@
+# -*- coding: utf-8 -*-
+
 import events_schedule.events_schedule as stock_schedule
 from utils.sql_utils import SQL
 import logging
 from technical.technical_analysis import buildEmailContent as sendTechnicalAnalysis
 from technical.technical_analysis import generate_plot_fig
 from utils.stock_data_utils import insertData, filterStocks
-from utils.crawler_utils import get_child_urls,get_url_data
+from utils.crawler_utils import get_child_urls,get_url_data,get_html_data
 import schedule
 import pandas as pd
+import sys
 log_format="[%(filename)s:%(lineno)s - %(funcName)s] %(message)s"
-logging.basicConfig(filename='stocks.log', level = logging.INFO, format = log_format)
+
+file_handler = logging.FileHandler(filename='stocks.log')
+stdout_handler = logging.StreamHandler(sys.stdout)
+handlers = [file_handler, stdout_handler]
+
+logging.basicConfig(handlers=handlers, level = logging.INFO, format = log_format)
 
 def scheduling():
 	schedule.every().day.at("08:30").do(stock_schedule.scrape_data)
@@ -35,11 +43,10 @@ def main():
 	# for df in dfs:
 		# print(dfs[df])
 	# scheduling()
-	sendTechnicalAnalysis()
 	# generate_plot_fig('AGR')
-	# insertData(0)
+	# insertData(2)
 	# stock_schedule.scrape_data()
-	
+	sendTechnicalAnalysis()
 
 if __name__ == '__main__':
 	main()
