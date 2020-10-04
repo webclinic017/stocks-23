@@ -36,7 +36,7 @@ def generate_plot_fig(ticker):
 		mpf.make_addplot(sma, alpha = 1,ax = ax1, width=1),
 		mpf.make_addplot(adx_df, ax=ax2, width=1)
 	]
-
+	fig.suptitle(ticker)
 	mpf.plot(df, type='ohlc',
     		style='yahoo',
     		figsize=(10,6),
@@ -45,7 +45,8 @@ def generate_plot_fig(ticker):
             volume=ax3,
             addplot=apd,
             savefig=f"{ticker}.png"
+
             )
 	fig.savefig(f"{ticker}.png")
-
+	return 1 
 

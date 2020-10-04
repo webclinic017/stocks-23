@@ -2,6 +2,7 @@ from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 import urllib.request
 import pandas as pd
+import logging
 def is_valid(url):
     parsed = urlparse(url)
     return bool(parsed.netloc) and bool(parsed.scheme)
@@ -32,24 +33,14 @@ def get_url_data(url):
     return df
 
 def get_html_data(url):
+    logging.info(f"Crawl data from {url}")
     req = urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
     html = urllib.request.urlopen(req).read()
     soup = BeautifulSoup(html, features="html.parser")
-
     # kill all script and style elements
     for script in soup(["script", "style"]):
         script.extract()    # rip it out
-
     # get text
     text = soup.get_text()
-
-    # get relevant content
-    text = text.split("Cổ tức TM")[1].split("* EPS theo công bố")[0]
-    text = text.replace('T/S cổ tức','T/S cổ tức ')
-    text = text.replace('Beta','\nBeta ')
-    text = text.replace('EPS', '\nEPS ')
-    text = text.replace('P/E','\nP/E ',1)
-    text = text.replace('F P/E','\nF P/E ')
-    text = text.replace('BVPS', '\nBVPS ')
-    text = text.replace('P/B', '\nP/B ')
-    return text
+    return text 
+    

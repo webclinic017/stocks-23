@@ -99,16 +99,7 @@ class SQL():
         events['date'] = events['date'].dt.strftime("%d/%m/%Y")
         
         events_dict = events.to_dict(orient='records')
-        # sql = text(f"""
-        # update {self.table}
-        # set close = close * :percentage,
-        # open = open * :percentage,
-        # high = high * :percentage,
-        # low = low * :percentage
-        # where ticker = :ticker
-        # and date < str_to_date(:date, "%d/%m/%Y")
-        # """)
-        
+
         sql_cash = text(f"""
             update {self.table}
             set close = (close*close) / (close + :detail),

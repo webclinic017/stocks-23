@@ -2,9 +2,10 @@
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-
+import logging
 def sendEmail(message_body, subject):
-    sender = "hieund2102@gmail.com"
+    logging.info(f"Send email with subject \"{subject}\"")
+    sender = "hieundstocks@gmail.com"
     receiver = sender
     password = "oracle_4U"
     message = MIMEMultipart("alternative")

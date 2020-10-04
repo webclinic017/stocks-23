@@ -3,15 +3,13 @@
 import events_schedule.events_schedule as stock_schedule
 from utils.sql_utils import SQL
 import logging
-from technical.technical_analysis import buildEmailContent as sendTechnicalAnalysis
-from technical.technical_analysis import generate_plot_fig
+from technical.technical_analysis import start_analysis
 from utils.stock_data_utils import insertData, filterStocks
 from utils.crawler_utils import get_child_urls,get_url_data,get_html_data
+from fundamental.fundamental_analysis import get_fundamental_data
 import schedule
 import pandas as pd
 import sys
-from technical import trend_filter
-from technical import non_trend,trend
 log_format="[%(filename)s:%(lineno)s - %(funcName)s] %(message)s"
 
 file_handler = logging.FileHandler(filename='stocks.log')
@@ -28,25 +26,11 @@ def scheduling():
 	database = SQL()
 	schedule.every().day.at("21:15").do(database.adjustPrice)
 
-def getTickerData():
-	urls = get_child_urls("https://finance.vietstock.vn/chi-so-nganh.htm")
-	for url in urls:
-		if '/nganh/' in url:
-			sector = url.split("/")[-1].split('.')[0]
-			# print(sector)
-			df = get_url_data(url)
-			df = df.drop(df.columns[[0,3,4,5,6]] ,axis=1)
-			df['sector']=sector
-			pd.set_option('display.max_rows', df.shape[0]+1)
-			print(df)
+
 
 def main():
 	database = SQL()
-	# dfs = filterStocks()
-	# for df in dfs:
-		# print(dfs[df])
-	# scheduling()
-	# generate_plot_fig('AGR')
+	# get_html_data("https://finance.vietstock.vn/IBC/TS5-co-phieu.htm")
 	# for i in range(0,365):/
 		# insertData(i)
 	# stock_schedule.scrape_data()
@@ -54,8 +38,8 @@ def main():
 	# sendTechnicalAnalysis()
 	# print(trend_filter.is_stock_trending('STK'))
 	# trend_filter.filter_trend()
+	start_analysis()
 	# non_trend.generate_plot_fig('VHM')
-	trend.generate_plot_fig('ACB')
 	# trend_filter.bollinger('HDB')
 if __name__ == '__main__':
 	main()

@@ -1,88 +1,80 @@
 import pandas as pd
-import matplotlib.pyplot as plt
-import mplfinance as mpf
+from ta.trend import ADXIndicator
+from ta.volatility import BollingerBands
+from utils.sql_utils import SQL 
+from utils.stock_data_utils import filterStocks
 from datetime import datetime,timedelta
 import logging
 import base64
 from utils.file_utils import deleteFile
-from utils.stock_data_utils import filterStocks
-from utils.sql_utils import SQL
 from utils.email_utils import sendEmail
-from utils.crawler_utils import get_html_data
+from fundamental.fundamental_analysis import get_fundamental_data
+import warnings
+from technical import trend,non_trend
 
-def rsi(stockprices):
-    # df = stockprices
-    delta = stockprices['close'].diff()
-    up, down = delta.copy(), delta.copy()
-    up[up < 0] = 0
-    down[down > 0] = 0
-    # Calculate the SMA
-    roll_up = up.rolling(window=14).mean()
-    roll_down = down.abs().rolling(window=14).mean()
-    # Calculate the RSI based on SMA
-    RS = roll_up / roll_down
-    RSI = 100.0 - (100.0 / (1.0 + RS))
-    df = pd.DataFrame(RSI)
-    df[['upper', 'lower', 'middle']] = [70, 30, 50]
-    return df
+warnings.filterwarnings('ignore')
+
+def is_stock_trending(ticker):
+	database = SQL()
+	# get stock data ADX
+	df = database.getStockData(ticker, 50).sort_values(by='date', ascending=True).set_index('date')
+	adx = ADXIndicator(df['high'],df['low'], df['close']).adx().tail(14)
+	under_20_count = 0
+	# determining if the stock not trending
+	# 1. adx <20
+	# 2. adx in range (20,30) && adx trailling down
+	pre_value = None
+	for value in adx.tolist():
+		if pre_value is None:
+			pre_value = value
+		if (value <20):
+			under_20_count = under_20_count+1
+		elif value in range(20,31) and value<pre_value:
+			under_20_count = under_20_count+1
+		pre_value = value
+	# print(ticker, under_20_count<5)
+	return True if under_20_count < 5 else False
 
 
-def bollingerbands(stockprices):
-    stockprices['MA20'] = stockprices['close'].rolling(window=20).mean()
-    stockprices['20dSTD'] = stockprices['close'].rolling(window=20).std() 
-    stockprices['Upper'] = stockprices['MA20'] + (stockprices['20dSTD'] * 2)
-    stockprices['Lower'] = stockprices['MA20'] - (stockprices['20dSTD'] * 2)
-    bollingers = stockprices[['MA20', 'Upper', 'Lower']]
-    return bollingers
+	
+def start_analysis():
+	sector_list = filterStocks()
+	for sector in sector_list:
+		trending_ticker = []
+		non_trending_ticker = []
+		ticker_list = sector_list[sector]['ticker'].tolist()
+		for ticker in ticker_list:
+			try:
+				if is_stock_trending(ticker) is False:
+					non_trending_ticker.append(ticker)
+				else:
+					trending_ticker.append(ticker)
+			except:
+				continue
+		if len(trending_ticker) >0: buildEmailContent(sector,trending_ticker,True) 
+		if len(non_trending_ticker) >0: buildEmailContent(sector,non_trending_ticker,False) 
 
-def generate_plot_fig(ticker):
-    database = SQL()
-    stockprices = database.getStockData(ticker, 200).sort_values(by='date', ascending=True).set_index('date')
-    bollingers_data = bollingerbands(stockprices)
-    rsi_data = rsi(stockprices)
-    
-    # filter overbuy
-    latest_b = stockprices.tail(1).iloc[0]
-    latest_r = rsi_data.tail(1).iloc[0]
-    # if (latest_b['close'] > latest_b['Upper'] or latest_b['close'] > (latest_b['Upper'] +latest_b['MA20'])/2) \
-    # and latest_r['close'] >= 70 :
-        # logging.info(f"{ticker} is overbought")
-        # return None
-    logging.debug(f"Generate Charts for {ticker}")
-    fig = mpf.figure(style='yahoo',figsize=(10,6))
-    ax1 = fig.add_subplot(3,1,1)
-    ax2 = fig.add_subplot(3,1,2)
-    ax3 = fig.add_subplot(3,1,3)
 
-    apd = [
-        mpf.make_addplot(bollingers_data, alpha = 0.3,ax = ax1),
-        mpf.make_addplot(rsi_data, ax=ax2, ylabel = f"{ticker}")
-    ]
-    logging.info(f"generate charts for {ticker}")
-    mpf.plot(stockprices, type='candle', 
-        ax = ax1, 
-            volume=ax3,
-            addplot=apd,
-            xrotation=0,
-            # figscale=1.1,figratio=(8,5),
-            # title=f"\n{ticker}",
-            savefig=f"{ticker}.png"
-            )
-    fig.xlabel=f"{ticker}"
-    fig.savefig(f'{ticker}.png')
-    return 1
 
-def generateGraph(ticker):
+
+def generateGraph(ticker, is_trending):
     """
     generate bollinger graph & URL for ticker detail
     output a html table row 
     """
-    logging.info(f"generate graph {ticker}")
-    chart = generate_plot_fig(ticker)
+    logging.info(f"generate graph {ticker}, is_trending: {is_trending}")
+    company_data = get_fundamental_data(ticker)
+
+    if company_data is None:
+    	return ""
+    if is_trending:
+    	chart = trend.generate_plot_fig(ticker)
+    else:
+    	chart = non_trend.generate_plot_fig(ticker)
+
     if (chart is None):
         return ""
     encoded = base64.b64encode(open(f"{ticker}.png", 'rb').read()).decode()
-    company_data= get_html_data(f"https://finance.vietstock.vn/{ticker}/tai-chinh.htm").replace('\n','<br>')
     html_str = f"""
     <tr>
         <td>
@@ -98,28 +90,26 @@ def generateGraph(ticker):
     """
     return html_str
 
-def buildEmailContent():
-    # get tickers list filtered by volume
-    sector_list = filterStocks()
-    for sector in sector_list:
-        ticker_list = sector_list[sector]['ticker'].tolist()
+def buildEmailContent(sector,ticker_list,is_trending):
+	analysis_type = "Trending" if is_trending else "Non-Trending"
+	logging.info(f"Generate charts for {sector}, type {analysis_type}")
+    #chunk ticker_list into smaller list for ease of mailing
+	n = 30
+	i = 1
+	ticker_lists = [ticker_list[i:i+n] for i in range(0, len(ticker_list), n)]
+	for sublist in ticker_lists:
+		html_body = """
+        <table>
+            <tr>
+                <th>Ticker</th>
+                <th>Graphs</th>
+                <th>Company Data</th>
+            </tr>
+        """
+		for ticker in sublist:
+			html_body = html_body + generateGraph(ticker, is_trending)
+		sendEmail(html_body, f"[{datetime.now().strftime('%Y-%m-%d')}][{sector}][{analysis_type}] Part {i} Market Technical Analysis")
+		i = i + 1
+    #delete generated images
+	deleteFile('png', '.')
 
-        #chunk ticker_list into smaller list for ease of mailing
-        n = 30
-        i = 1
-        ticker_lists = [ticker_list[i:i+n] for i in range(0, len(ticker_list), n)]
-        for sublist in ticker_lists:
-            html_body = """
-            <table>
-                <tr>
-                    <th>Ticker</th>
-                    <th>Graphs</th>
-                    <th>Company Data</th>
-                </tr>
-            """
-            for ticker in sublist:
-                html_body = html_body + generateGraph(ticker)
-            sendEmail(html_body, f"[{datetime.now().strftime('%Y-%m-%d')}][{sector}] Part {i} Market Technical Analysis")
-            i = i + 1
-        #delete generated images
-        deleteFile('png', '.')

@@ -32,7 +32,7 @@ def generate_plot_fig(ticker):
         mpf.make_addplot(bollinger, alpha = 0.3,ax = ax1),
         mpf.make_addplot(rsi_data, ax=ax2)
     ]
-
+    fig.suptitle(ticker)
     mpf.plot(df, type='candle',
     		style='yahoo',
     		figsize=(10,6),
@@ -43,3 +43,4 @@ def generate_plot_fig(ticker):
             savefig=f"{ticker}.png"
             )
     fig.savefig(f"{ticker}.png")
+    return 1 
