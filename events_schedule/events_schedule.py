@@ -19,11 +19,11 @@ def scrape_data():
 	df = calculate_stock_adjustment(df)
 	database = SQL()
 	database.insertCalendarEvent(df)
-	# df[0]= '<a href="https://finance.vietstock.vn/'+df[0]+'/TS5-co-phieu.htm">'+df[0]+'</a>'
-	# df = str(df.to_html())
-	# df = df.replace("&lt;","<")
-	# df = df.replace("&gt;",">")
-	# # sendEmail(table, "Stock Calendar Event")
+	df[0]= '<a href="https://finance.vietstock.vn/'+df[0]+'/TS5-co-phieu.htm">'+df[0]+'</a>'
+	df = str(df.to_html())
+	df = df.replace("&lt;","<")
+	df = df.replace("&gt;",">")
+	sendEmail(table, "Stock Calendar Event")
 
 def crawlData():
 	url = "https://www.cophieu68.vn/events.php"
@@ -38,6 +38,13 @@ def crawlData():
 		html = response.read()
 		df = pd.concat([df, pd.read_html(html)[1]])
 	return df
+
+def calculate_percentage(x):
+	if '/' in x:
+		s = x.split('/')
+	else:
+		s = x.split(':')
+	return int(float(s[1]))/int(float(s[0]))
 
 def calculate_stock_adjustment(df):
 	"""
@@ -60,7 +67,8 @@ def calculate_stock_adjustment(df):
 	# F = 1 + y/x
 	stock_div = df[1]=='Cổ phiếu thưởng'
 	sdf =df[stock_div]
-	sdf[4]=sdf[4].apply(lambda x: 1 + (int(x.split('/')[1])/int(x.split('/')[0])))
+	print(sdf)
+	sdf[4]=sdf[4].apply(lambda x: 1 + calculate_percentage(x))
 	sdf[1]='Stock Dividend'
 
 	# finalizing data

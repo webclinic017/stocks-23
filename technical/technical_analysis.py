@@ -20,20 +20,15 @@ def is_stock_trending(ticker):
 	df = database.getStockData(ticker, 50).sort_values(by='date', ascending=True).set_index('date')
 	adx = ADXIndicator(df['high'],df['low'], df['close']).adx().tail(14)
 	under_20_count = 0
-	# determining if the stock not trending
-	# 1. adx <20
-	# 2. adx in range (20,30) && adx trailling down
-	pre_value = None
-	for value in adx.tolist():
-		if pre_value is None:
-			pre_value = value
-		if (value <20):
-			under_20_count = under_20_count+1
-		elif value in range(20,31) and value<pre_value:
-			under_20_count = under_20_count+1
-		pre_value = value
-	# print(ticker, under_20_count<5)
-	return True if under_20_count < 5 else False
+	a1 =adx.tail(1).iloc[0]
+	a2=adx.tail(2).head(1).iloc[0]
+
+	""" 
+	determining if the stock not trending
+	1. adx <20
+	2. adx in range (20,30) && adx trailling down
+	"""
+	return (a1 > 30 or (a1 in range(20,31) and a1 >a2))
 
 
 	
@@ -53,6 +48,9 @@ def start_analysis():
 				continue
 		if len(trending_ticker) >0: buildEmailContent(sector,trending_ticker,True) 
 		if len(non_trending_ticker) >0: buildEmailContent(sector,non_trending_ticker,False) 
+    #delete generated images
+	deleteFile('png', '.')
+
 
 
 
@@ -62,9 +60,8 @@ def generateGraph(ticker, is_trending):
     generate bollinger graph & URL for ticker detail
     output a html table row 
     """
-    logging.info(f"generate graph {ticker}, is_trending: {is_trending}")
-    company_data = get_fundamental_data(ticker)
-
+    # company_data = get_fundamental_data(ticker)
+    company_data= ""
     if company_data is None:
     	return ""
     if is_trending:
@@ -74,6 +71,8 @@ def generateGraph(ticker, is_trending):
 
     if (chart is None):
         return ""
+    logging.info(f"generate graph {ticker}, is_trending: {is_trending}")
+
     encoded = base64.b64encode(open(f"{ticker}.png", 'rb').read()).decode()
     html_str = f"""
     <tr>
@@ -92,7 +91,7 @@ def generateGraph(ticker, is_trending):
 
 def buildEmailContent(sector,ticker_list,is_trending):
 	analysis_type = "Trending" if is_trending else "Non-Trending"
-	logging.info(f"Generate charts for {sector}, type {analysis_type}")
+	logging.info(f"Generate charts for {sector}, type {analysis_type}, list size {len(ticker_list)}")
     #chunk ticker_list into smaller list for ease of mailing
 	n = 30
 	i = 1
@@ -108,8 +107,10 @@ def buildEmailContent(sector,ticker_list,is_trending):
         """
 		for ticker in sublist:
 			html_body = html_body + generateGraph(ticker, is_trending)
-		sendEmail(html_body, f"[{datetime.now().strftime('%Y-%m-%d')}][{sector}][{analysis_type}] Part {i} Market Technical Analysis")
+
+		if html_body.count('td')>2:
+			file  = open(f"[{datetime.now().strftime('%Y-%m-%d')}][{sector}][{analysis_type}] Part {i} Market Technical Analysis.html", 'a+')
+			file.write(html_body)
+			sendEmail(html_body, f"[{datetime.now().strftime('%Y-%m-%d')}][{sector}][{analysis_type}] Part {i} Market Technical Analysis")
 		i = i + 1
-    #delete generated images
-	deleteFile('png', '.')
 

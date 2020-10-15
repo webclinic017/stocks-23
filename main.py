@@ -7,9 +7,11 @@ from technical.technical_analysis import start_analysis
 from utils.stock_data_utils import insertData, filterStocks
 from utils.crawler_utils import get_child_urls,get_url_data,get_html_data
 from fundamental.fundamental_analysis import get_fundamental_data
+from backtest.backtest import backtest_trend
 import schedule
 import pandas as pd
 import sys
+
 log_format="[%(filename)s:%(lineno)s - %(funcName)s] %(message)s"
 
 file_handler = logging.FileHandler(filename='stocks.log')
@@ -31,15 +33,9 @@ def scheduling():
 def main():
 	database = SQL()
 	# get_html_data("https://finance.vietstock.vn/IBC/TS5-co-phieu.htm")
-	# for i in range(0,365):/
-		# insertData(i)
-	# stock_schedule.scrape_data()
-	# database.adjustPrice()
-	# sendTechnicalAnalysis()
-	# print(trend_filter.is_stock_trending('STK'))
-	# trend_filter.filter_trend()
+	#for i in range(0,10):
+	 #   insertData(i)
+	stock_schedule.scrape_data()
 	start_analysis()
-	# non_trend.generate_plot_fig('VHM')
-	# trend_filter.bollinger('HDB')
 if __name__ == '__main__':
 	main()
