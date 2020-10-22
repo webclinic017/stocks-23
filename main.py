@@ -33,8 +33,8 @@ def scheduling():
 def main():
 	database = SQL()
 	# get_html_data("https://finance.vietstock.vn/IBC/TS5-co-phieu.htm")
-	#for i in range(0,10):
-	 #   insertData(i)
+	for i in range(0,10):
+	    insertData(i)
 	stock_schedule.scrape_data()
 	start_analysis()
 if __name__ == '__main__':

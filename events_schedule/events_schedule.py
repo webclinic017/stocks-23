@@ -19,11 +19,11 @@ def scrape_data():
 	df = calculate_stock_adjustment(df)
 	database = SQL()
 	database.insertCalendarEvent(df)
-	df[0]= '<a href="https://finance.vietstock.vn/'+df[0]+'/TS5-co-phieu.htm">'+df[0]+'</a>'
+	#df[0]= '<a href="https://finance.vietstock.vn/'+df[0]+'/TS5-co-phieu.htm">'+df[0]+'</a>'
 	df = str(df.to_html())
 	df = df.replace("&lt;","<")
 	df = df.replace("&gt;",">")
-	sendEmail(table, "Stock Calendar Event")
+	#sendEmail(table, "Stock Calendar Event")
 
 def crawlData():
 	url = "https://www.cophieu68.vn/events.php"
