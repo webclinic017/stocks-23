@@ -1,6 +1,7 @@
-#Flow 
+# Flow 
 1. Crawl EOD stock data
 2. Crawl Dividend data
+
 2.1. Adjust stock price accordingly 
 3. Generate buy signals based on technical analysis 
 3.1. Filter stocks based on trade volume
