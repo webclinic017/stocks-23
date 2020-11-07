@@ -11,25 +11,43 @@ from utils.email_utils import sendEmail
 from fundamental.fundamental_analysis import get_fundamental_data
 import warnings
 from technical import trend, non_trend
-
+import numpy as np
 warnings.filterwarnings('ignore')
 
 
+def array_trending(array, length):
+    ret = np.cumsum(array, dtype=float)
+    ret[length:] = ret[length:] - ret[:-length]
+    ar_value = ret[length - 1:] / length
+    return np.all(np.diff(ar_value) > 0)
+
+
 def is_stock_trending(ticker):
+
     database = SQL()
     # get stock data ADX
     df = database.getStockData(ticker, 50).sort_values(
         by='date', ascending=True).set_index('date')
     adx = ADXIndicator(df['high'], df['low'], df['close']).adx().tail(14)
-    under_20_count = 0
-    a1 = adx.tail(1).iloc[0]
-    a2 = adx.tail(2).head(1).iloc[0]
+    adx_ar = adx.to_numpy()
+    adx_above_30 = 0
+    adx_above_20 = 0
+    for i in adx_ar:
+        if i > 20:
+            adx_above_20 += 1
+            if i > 30:
+                adx_above_30 += 1
+
+    # under_20_count = 0
+    # a1 = adx.tail(1).iloc[0]
+    # a2 = adx.tail(2).head(1).iloc[0]
     """ 
-	determining if the stock not trending
-	1. adx <20
-	2. adx in range (20,30) && adx trailling down
-	"""
-    return (a1 > 30 or (a1 in range(20, 31) and a1 > a2))
+    determining if the stock not trending
+    1. adx <20
+    2. adx in range (20,30) && adx trailling down
+    """
+    return (adx_above_30 > 5 \
+            or (array_trending(adx_ar, len(adx_ar)) and adx_above_20 > 10))
 
 
 def start_analysis():
@@ -37,7 +55,7 @@ def start_analysis():
     non_trend_mail = """
         <table>
             <tr>
-            	<th>Sector</th>
+                <th>Sector</th>
                 <th>Ticker</th>
                 <th>Graphs</th>
                 <th>Company Data</th>
@@ -46,7 +64,7 @@ def start_analysis():
     trending_mail = """
         <table>
             <tr>
-            	<th>Sector</th>
+                <th>Sector</th>
                 <th>Ticker</th>
                 <th>Graphs</th>
                 <th>Company Data</th>
@@ -62,7 +80,8 @@ def start_analysis():
                     non_trending_ticker.append(ticker)
                 else:
                     trending_ticker.append(ticker)
-            except:
+            except Exception as e:
+                logging.error(str(e))
                 continue
         if len(trending_ticker) > 0:
             trending_mail += buildEmailContent(sector, trending_ticker, True)
@@ -74,11 +93,19 @@ def start_analysis():
             non_trend_mail,
             f"[{datetime.now().strftime('%Y-%m-%d')}][Non-Trending] Market Technical Analysis"
         )
+        file = open(
+            f"[{datetime.now().strftime('%Y-%m-%d')}][Non-Trending] Market Technical Analysis.html",
+            'a+')
+        file.write(non_trend_mail)
     if trending_mail.count('td') > 2:
         sendEmail(
             trending_mail,
             f"[{datetime.now().strftime('%Y-%m-%d')}][Trending] Market Technical Analysis"
         )
+        file = open(
+            f"[{datetime.now().strftime('%Y-%m-%d')}][Trending] Market Technical Analysis.html",
+            'a+')
+        file.write(trending_mail)
 
 
 #delete generated images
@@ -105,7 +132,7 @@ def generateGraph(sector, ticker, is_trending):
     encoded = base64.b64encode(open(f"{ticker}.png", 'rb').read()).decode()
     html_str = f"""
     <tr>
-    	<td>{sector}</td>
+        <td>{sector}</td>
         <td>
             <a href="https://finance.vietstock.vn/{ticker}/TS5-co-phieu.htm">{ticker}</a>
         </td>
@@ -122,9 +149,9 @@ def generateGraph(sector, ticker, is_trending):
 
 def buildEmailContent(sector, ticker_list, is_trending):
     analysis_type = "Trending" if is_trending else "Non-Trending"
-    logging.info(
-        f"Generate charts for {sector}, type {analysis_type}, list size {len(ticker_list)}"
-    )
+    # logging.info(
+        # f"Generate charts for {sector}, type {analysis_type}, list size {len(ticker_list)}"
+    # )
     #chunk ticker_list into smaller list for ease of mailing
     # n = 30
     # i = 1
@@ -145,7 +172,7 @@ def buildEmailContent(sector, ticker_list, is_trending):
         #         f"[{datetime.now().strftime('%Y-%m-%d')}][{analysis_type}] Market Technical Analysis.html",
         #     )
 
-    logging.info(
-        f"Sector {sector}, type {analysis_type}, buy signals count: {html_body.count('tr')/2}"
-    )
+    # logging.info(
+    #     f"Sector {sector}, type {analysis_type}, buy signals count: {html_body.count('tr')/2}"
+    # )
     return html_body

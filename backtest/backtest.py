@@ -19,8 +19,8 @@ class Strategy(bt.Strategy):
                                                                  period=14)
 
         # trending indicator
-        self.sma4 = bt.indicators.MovingAverageSimple(self.datas[0], period=4)
-        self.sma9 = bt.indicators.MovingAverageSimple(self.datas[0], period=9)
+        self.sma4 = bt.indicators.MovingAverageSimple(self.datas[0], period=9)
+        self.sma9 = bt.indicators.MovingAverageSimple(self.datas[0], period=20)
         self.plusdi = bt.indicators.PlusDirectionalIndicator(self.datas[0],
                                                              period=14)
         self.minusdi = bt.indicators.MinusDirectionalIndicator(self.datas[0],

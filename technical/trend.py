@@ -11,50 +11,68 @@ from utils.email_utils import sendEmail
 from utils.crawler_utils import get_html_data
 import ta
 
+filters = ['sma']
 
-def signal_filter(sma_df, adx_df):
-    # identify uptrend
 
+def sma_signal_filter(ticker, df, short_value, long_value):
+    sma_df = pd.DataFrame(
+        data=ta.trend.sma_indicator(df['close'], n=short_value))
+    sma_df['sma_short'] = sma_df['sma_' + str(short_value)]
+    sma_df['sma_long'] = ta.trend.sma_indicator(df['close'], n=long_value)
+    sma0 = sma_df.tail(1)
+    sma1 = sma_df.tail(2).head(1)
+    if ((sma0['sma_short'] > sma0['sma_long']).iloc[0]
+            and (sma1['sma_short'] < sma1['sma_long']).iloc[0]):
+        logging.info(f'{ticker} SMA requirement met')
+        return sma_df.drop('sma_' + str(short_value), 1)
+    return None
+
+
+def adx_signal_filter(ticker, df):
+    adx_data = ta.trend.ADXIndicator(df['high'], df['low'], df['close'])
+    adx_df = pd.DataFrame(data=adx_data.adx_neg())
+    adx_df['adx_pos'] = adx_data.adx_pos()
+    adx_df['ADX'] = adx_data.adx()
     adx = adx_df.tail(1)
     if (adx['adx_pos'] < adx['adx_neg']).iloc[0]:
-        return False
-    # sma of last closing date
-    sma0 = sma_df.tail(1)
-    a04 = sma0['sma_4']
-    a09 = sma0['sma_9']
-    # sma of second to last closing date
-    sma1 = sma_df.tail(2).head(1)
-    a14 = sma1['sma_4'].iloc[0]
-    a19 = sma1['sma_9'].iloc[0]
-    if ((sma0['sma_4'] > sma0['sma_9']).iloc[0] and (sma1['sma_4'] < sma1['sma_9']).iloc[0]) \
-    :
-        logging.info("Technical Indicator Requirement met")
-        # print(sma_df)
-        return True
+        return None
+    logging.info(f'{ticker} ADX requirement met')
+    return adx_df
 
-    return False
+
+def signal_filter(ticker, df, filters):
+    # identify uptrend
+    dfs = []
+    for flt in filters:
+        if flt == 'sma':
+            dfs.append(sma_signal_filter(ticker, df, 10, 20))
+        if flt == 'adx':
+            dfs.append(adx_signal_filter(ticker, df))
+
+    # try:
+    for df in dfs:
+        if type(df) == type(None):
+            return None
+        # if None == df:
+        # return None
+    logging.info("Technical Indicator Requirement met")
+    return dfs
+    # except Exception as e:
+    # logging.error(str(e))
+    # return None
 
 
 def generate_plot_fig(ticker):
     """
-	identify entry & exit using MA crossover & DMI 
-	"""
+    identify entry & exit using MA crossover & DMI 
+    """
     database = SQL()
-    # get technical data
-    # SMA
     df = database.getStockData(ticker, 60).sort_values(
         by='date', ascending=True).set_index('date')
-    sma = pd.DataFrame(data=ta.trend.sma_indicator(df['close'], n=4))
-    sma['sma_9'] = ta.trend.sma_indicator(df['close'], n=9)
-
-    # DMI
-    adx_data = ta.trend.ADXIndicator(df['high'], df['low'], df['close'])
-
-    adx_df = pd.DataFrame(data=adx_data.adx_neg())
-    adx_df['adx_pos'] = adx_data.adx_pos()
-    adx_df['ADX'] = adx_data.adx()
+    # get technical data
+    dfs = signal_filter(ticker, df, filters)
     # not generating graph if not a buy signal
-    if not signal_filter(sma, adx_df):
+    if dfs == None:
         return None
 
     fig = mpf.figure(style='yahoo', figsize=(10, 6))
@@ -63,8 +81,8 @@ def generate_plot_fig(ticker):
     ax3 = fig.add_subplot(3, 2, 6)
 
     apd = [
-        mpf.make_addplot(sma, alpha=1, ax=ax1, width=1),
-        mpf.make_addplot(adx_df, ax=ax2, width=1)
+        mpf.make_addplot(dfs[0], alpha=1, ax=ax1, width=1),
+        mpf.make_addplot(ta.trend.ADXIndicator(df['high'], df['low'], df['close']).adx(), ax=ax2, width=1)
     ]
     fig.suptitle(ticker)
     mpf.plot(df,
